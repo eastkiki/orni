@@ -27,15 +27,13 @@ class Params {
 type RouteHandler = (req: ServerRequest, res: ServerResponse, params: Params) => void;
 
 export default class Orni {
-  public router;
-  private config;
+  private router;
 
   constructor() {
-    this.config = {};
     this.router = {};
   }
   route(method: string, url: string, handler: RouteHandler) {
-    const METHOD = method = method.toLocaleUpperCase();
+    const METHOD = method.toLocaleUpperCase();
     this.router[METHOD] = this.router[METHOD] || {};
     let lastPath = this.router[METHOD];
     let params = [];
