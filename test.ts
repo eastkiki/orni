@@ -12,6 +12,11 @@ orni.get('/:name/a', async (req, res, {param, query}) => {
     console.log(param);
     res.json({msg: 'name'});
 });
+
+orni.get('/:name/a/:abc', async (req, res, {param, query}) => {
+    console.log(param);
+    res.json({msg: 'name'});
+});
 orni.get('/b/a', async (req, res, {param, query}) => {
     console.log(param);
     res.json({msg: 'b'});

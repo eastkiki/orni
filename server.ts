@@ -1,11 +1,15 @@
 // @ts-ignore
 import { serve, ServerRequest, Response } from "https://deno.land/std/http/server.ts";
-// @ts-ignore
+
+import { StringDictionary } from "./types.ts";
 import query from "./query.ts";
 
+  
 class Params {
-  param: object;
-  query: object;
+
+  param: StringDictionary;
+  query: StringDictionary;
+
   constructor() {
     this.param = {};
     this.query = {};
@@ -17,26 +21,42 @@ class Params {
       }
     });
   }
-  setQuery(url) {
+  setQuery(url: string) {
     const [,...queries] = url.split('?');
     const queryStr = queries.join('?');
     this.query = query.parse(queryStr);
   }
 }
-
+const enum Method {
+  Get = "get",
+  Post = "post",
+  Put = "put",
+  Delete = "delete",
+  Patch = "patch",
+  Head = "head",
+  Options = "options",
+}
 type RouteHandler = (req: ServerRequest, res: ServerResponse, params: Params) => void;
-
+type RouterPath = { params?: Array<string>, handler?: RouteHandler }
+type RouterPaths = {
+  [index: string]: RouterPath
+}
+type Router = {
+  [index: string]: RouterPath | RouterPaths
+};
 export default class Orni {
-  private router;
+  private router: any;
 
   constructor() {
     this.router = {};
   }
-  route(method: string, url: string, handler: RouteHandler) {
+  route(method: Method, url: string, handler: RouteHandler) {
     const METHOD = method.toLocaleUpperCase();
-    this.router[METHOD] = this.router[METHOD] || {};
+    if (!this.router[METHOD]) {
+      this.router[METHOD] = {};
+    }
     let lastPath = this.router[METHOD];
-    let params = [];
+    let params: Array<string> = [];
     url.split('\/').filter((v) => !!v).forEach((path, i) => {
       let p = path;
       if (path[0] === ':') {
@@ -54,29 +74,34 @@ export default class Orni {
     return this;
   }
   get(url: string, handler: RouteHandler) {
-    return this.route('get', url, handler);
+    return this.route(Method.Get, url, handler);
   }
   post(url: string, handler: RouteHandler) {
-    return this.route('post', url, handler);
+    return this.route(Method.Post, url, handler);
   }
   put(url: string, handler: RouteHandler) {
-    return this.route('put', url, handler);
+    return this.route(Method.Put, url, handler);
   }
   delete(url: string, handler: RouteHandler) {
-    return this.route('delete', url, handler);
+    return this.route(Method.Delete, url, handler);
   }
   patch(url: string, handler: RouteHandler) {
-    return this.route('patch', url, handler);
+    return this.route(Method.Patch, url, handler);
   }
   head(url: string, handler: RouteHandler) {
-    return this.route('head', url, handler);
+    return this.route(Method.Head, url, handler);
   }
   options(url: string, handler: RouteHandler) {
-    return this.route('options', url, handler);
+    return this.route(Method.Options, url, handler);
   }
   private async routeNotFound(req: ServerRequest, res: ServerResponse) {
     return await req.respond({
       status: 404
+    });
+  }
+  private async routeInternalServerError(req: ServerRequest, res: ServerResponse) {
+    return await req.respond({
+      status: 500
     });
   }
   private async routing(req: ServerRequest) {
@@ -99,14 +124,18 @@ export default class Orni {
   private async routeMatch(req: ServerRequest) {
     const {method, url} = req;
     console.log(method, url);
-
     const res = new ServerResponse(req);
-    const route = await this.routing(req);
-    if (route && route.handler) {
-      return await route.handler(req, res, route.param);
+
+    try {
+      const route = await this.routing(req);
+      if (route && route.handler) {
+        return await route.handler(req, res, route.param);
+      }
+      
+      return await this.routeNotFound(req, res);
+    } catch(e){
+      return await this.routeInternalServerError(req, res);
     }
-    
-    return await this.routeNotFound(req, res);
   }
   private async routeHadle(req: ServerRequest) {
     return await this.routeMatch(req);
@@ -134,7 +163,7 @@ class ServerResponse {
     this.response.status = code;
     return this;
   }
-  headers(key, val) {
+  headers(key: string, val: string) {
     if (!this.response.headers) {
       this.response.headers = new Headers();
     }
@@ -143,12 +172,12 @@ class ServerResponse {
     return this;
   }
 
-  async text(msg) {
+  async text(msg: string) {
     this.headers('Content-Type', 'text/plain');
     this.response.body = new TextEncoder().encode(msg);
     return this.end();
   }
-  async json(obj) {
+  async json(obj: any) {
     this.headers('Content-Type', 'application/json');
     this.response.body = new TextEncoder().encode(JSON.stringify(obj));
     return this.end();

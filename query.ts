@@ -1,14 +1,25 @@
-const DEFAULT_SEP = '&';
-const DEFAULT_EQ = '=';
-function parse(queryString: string, sep: string=DEFAULT_SEP, eq: string=DEFAULT_EQ): object {
+const DEFAULT_SEP: string = '&';
+const DEFAULT_EQ: string = '=';
+
+import { StringDictionary } from "./types.ts";
+
+type QueryDictionary = StringDictionary;
+
+function parse(queryString: string, sep: string=DEFAULT_SEP, eq: string=DEFAULT_EQ): QueryDictionary {
   const pairs = queryString.replace(/^\?/, '').split(sep);
-  return pairs.reduce((r, pair) => {
+  const r:QueryDictionary = {};
+  pairs.forEach((pair) => {
     const [key, value=''] = pair.split(eq);
     if (key) {
-      r[key] = !r[key] ? decodeURIComponent(value) : [].concat(r[key], decodeURIComponent(value));
+      if (!r[key]) {
+        r[key] = decodeURIComponent(value);
+      } else {
+        const arr: Array<string> = [];
+        r[key] = arr.concat(r[key], decodeURIComponent(value));
+      }
     }
-    return r;
-  }, {});
+  });
+  return r;
 };
 
 function stringify (obj: object, sep: string=DEFAULT_SEP, eq: string=DEFAULT_EQ): string {
